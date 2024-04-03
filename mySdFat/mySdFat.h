@@ -52,6 +52,8 @@ bool mySdFat_init();
 
 bool listDir(const char *path);
 
+void listDir_recursive(myFile *Folder, uint8_t tab);
+
 bool readFile(const char *path, const char *fileName);
 
 myFile fileOpen(const char *path, const char *filename);
@@ -62,7 +64,7 @@ uint32_t fileSize(myFile *p_file);
 
 void fileClose(myFile *p_file);
 
-uint8_t readByte(myFile* p_file);
+uint8_t readByte(myFile *p_file);
 
 myFile createDirectory(const char *path, const char *dirName);
 
@@ -74,13 +76,13 @@ myFile nextFile(myFile *p_file);
 
 myFile pathExists(const char *path);
 
-uint32_t startCluster(myFile file);
+uint32_t startCluster(myFile *file);
 
-bool isValidFile(myFile file);
+bool isValidFile(myFile *file);
 
-bool isDirectory(myFile file);
+bool isDirectory(myFile *file);
 
-bool isEndOfDir(myFile file);
+bool isEndOfDir(myFile *file);
 
 void fileReset(myFile *p_file);
 
