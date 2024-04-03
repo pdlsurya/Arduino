@@ -58,33 +58,33 @@ bool readFile(const char *path, const char *fileName);
 
 myFile fileOpen(const char *path, const char *filename);
 
-uint8_t fileLfnEntCnt(myFile *p_file);
+uint8_t fileLfnEntCnt(myFile *pFile);
 
-uint32_t fileSize(myFile *p_file);
+uint32_t fileSize(myFile *pFile);
 
-void fileClose(myFile *p_file);
+void fileClose(myFile *pFile);
 
-uint8_t readByte(myFile *p_file);
+uint8_t readByte(myFile *pFile);
 
 myFile createDirectory(const char *path, const char *dirName);
 
-bool fileWrite(myFile *p_file, const char *data);
+bool fileWrite(myFile *pFile, const char *data);
 
 bool fileDelete(const char *path, const char *filename);
 
-myFile nextFile(myFile *p_file);
+myFile nextFile(myFile *pFile);
 
 myFile pathExists(const char *path);
 
-uint32_t startCluster(myFile *file);
+uint32_t startCluster(myFile *pFile);
 
-bool isValidFile(myFile *file);
+bool isValidFile(myFile *pFile);
 
-bool isDirectory(myFile *file);
+bool isDirectory(myFile *pFile);
 
-bool isEndOfDir(myFile *file);
+bool isEndOfDir(myFile *pFile);
 
-void fileReset(myFile *p_file);
+void fileReset(myFile *pFile);
 
 extern char fileName[128];
 
