@@ -421,10 +421,7 @@ myFile nextFile(myFile *pFolder)
             }
         }
     }
-    if (isDirectory(&temp))
-        temp.entryIndex = 2;
-    else
-        temp.entryIndex = 0;
+    temp.entryIndex = isDirectory(&temp) ? 2 : 0;
 
     return temp;
 }
@@ -461,17 +458,21 @@ static myFile fileExists(const char *file, myFile *pFolder)
 {
     myFile tempFile = {0};
 
-    while (!isEndOfDir(&(tempFile = nextFile(pFolder))))
+    do
     {
-        uint8_t nameIndx;
-        for (nameIndx = 0; nameIndx < strlen(file); nameIndx++)
+        tempFile = nextFile(pFolder);
+        if (isValidFile(&tempFile))
         {
-            if (file[nameIndx] != fileName[nameIndx])
-                break;
+            uint8_t nameIndx;
+            for (nameIndx = 0; nameIndx < strlen(file); nameIndx++)
+            {
+                if (file[nameIndx] != fileName[nameIndx])
+                    break;
+            }
+            if (nameIndx == strlen(file) && nameIndx == strlen(fileName))
+                return tempFile;
         }
-        if (nameIndx == strlen(file) && nameIndx == strlen(fileName))
-            return tempFile;
-    }
+    } while (!isEndOfDir(&tempFile));
     tempFile = {0};
     return tempFile;
 }
@@ -675,11 +676,12 @@ bool listDir(const char *path)
     }
     myFile folder = tempFile;
 
-    while (!isEndOfDir(&(tempFile = nextFile(&folder))))
+    do
     {
+        tempFile = nextFile(&folder);
         if (isValidFile(&tempFile))
             dispFile(&tempFile, fileName, 0);
-    }
+    } while (!isEndOfDir(&tempFile));
     return true;
 }
 
@@ -687,8 +689,9 @@ void listDir_recursive(myFile *pFolder, uint8_t tab)
 {
     myFile tempFile;
 
-    while (!isEndOfDir(&(tempFile = nextFile(pFolder))))
+    do
     {
+        tempFile = nextFile(pFolder);
         if (isValidFile(&tempFile))
         {
             if (isDirectory(&tempFile))
@@ -701,7 +704,7 @@ void listDir_recursive(myFile *pFolder, uint8_t tab)
             else
                 dispFile(&tempFile, fileName, tab);
         }
-    }
+    } while (!isEndOfDir(&tempFile));
 }
 
 static void fileSetStartClus(myFile *pFile, uint32_t cluster)
