@@ -4,9 +4,9 @@
 #include "myOled.h"
 #include "math.h"
 
-#if defined (HARDWARE_I2C)
+#if defined(HARDWARE_I2C)
 #include <Wire.h>
-#elif defined (SOFTWARE_I2C)
+#elif defined(SOFTWARE_I2C)
 #include "software_I2C.h"
 #endif
 
@@ -21,8 +21,8 @@
 #define TYPE_DATA 0x40
 #define CMD_ROL 0xA1
 #define CMD_SCAN_COM63 0xC0
-#define CMD_START_RMW 0xE0 //Read-Modify-Write start
-#define CMD_STOP_RMW 0xEE  //Read-Modify-Write end
+#define CMD_START_RMW 0xE0 // Read-Modify-Write start
+#define CMD_STOP_RMW 0xEE  // Read-Modify-Write end
 
 static uint8_t log_row;
 static bool log_scroll;
@@ -32,12 +32,12 @@ uint8_t num_cnt;
 uint8_t battery[14] = {0xFF, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0xC3, 0x3C};
 uint8_t signal[9] = {0x80, 0x00, 0xC0, 0x00, 0xF0, 0x00, 0xFC, 0x00, 0xFF};
 uint8_t bar[128];
-#if defined (PLATFORM_ESP8266)||defined(PLATFORM_ESP32)
-uint8_t dispBuffer[8][128]; //Display buffer
+#if defined(PLATFORM_ESP8266) || defined(PLATFORM_ESP32)
+uint8_t dispBuffer[8][128]; // Display buffer
 uint8_t disp_row;
 uint8_t disp_column;
 
-#elif defined (PLATFORM_AVR)
+#elif defined(PLATFORM_AVR)
 uint8_t pageBuffer[128];
 uint8_t column;
 #endif
@@ -101,17 +101,13 @@ void setCursorPos(uint8_t x, uint8_t y)
   sendCommand((x & 0x0F));
   // set higher column address (10H - 1FH) => 0x10 | (2 >> 4) = 10
   sendCommand(0x10 + (x >> 4));
-
-
-
 }
 
-void setCursor(uint8_t x, uint8_t y) //For display buffer
+void setCursor(uint8_t x, uint8_t y) // For display buffer
 {
 
   disp_column = x;
   disp_row = y / 8;
-
 }
 
 void display()
@@ -137,8 +133,6 @@ void display()
 #endif
 }
 
-
-
 void setPageMode()
 {
   sendCommand(0x20);
@@ -163,10 +157,9 @@ void setLineAddress(uint8_t Address)
   sendCommand(0x40 | Address);
 }
 
-
 void clearPart(uint8_t page, uint8_t start_pos, uint8_t end_pos)
 {
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
   uint8_t segments, column;
   setCursorPos(start_pos, page * 8);
   for (segments = 0; segments < (end_pos - start_pos) / 16; segments++)
@@ -177,7 +170,7 @@ void clearPart(uint8_t page, uint8_t start_pos, uint8_t end_pos)
     endDataTransmission();
   }
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
   setCursor(start_pos, page * 8);
   for (uint8_t i = start_pos; i <= end_pos; i++)
     dispBuffer[disp_row][disp_column++] = 0x00;
@@ -202,7 +195,7 @@ void update_page(uint8_t page, uint8_t page_buff[])
 
 void clearDisplay()
 {
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
   uint8_t page, segments, column;
   // clear the buffer so we can fill the screen with zeroes
   for (page = 0; page < 8; page++)
@@ -218,7 +211,7 @@ void clearDisplay()
     }
   }
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
   for (uint8_t i = 0; i < 8; i++)
   {
     for (uint8_t j = 0; j < 128; j++)
@@ -240,17 +233,17 @@ void initOled(uint8_t sda, uint8_t scl)
 #endif
   sendCommand(DISP_ON);
   sendCommand(NORM_MODE);
-  sendCommand(CMD_ROL); //Rotate 90 degrees
-  sendCommand(CMD_SCAN_COM63); //start scan from COM63 to COM0
-  //setPageMode();
-  //setChargePump();
+  sendCommand(CMD_ROL);        // Rotate 90 degrees
+  sendCommand(CMD_SCAN_COM63); // start scan from COM63 to COM0
+  // setPageMode();
+  // setChargePump();
   clearDisplay();
 }
 
 void printChar(char C, uint8_t xpos, uint8_t ypos, uint8_t font_size, bool Highlight)
 {
   char chr;
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
   beginDataTransmission(OLED_ADDRESS);
 #endif
 
@@ -263,24 +256,23 @@ void printChar(char C, uint8_t xpos, uint8_t ypos, uint8_t font_size, bool Highl
         chr = ~chr;
 #if defined(PLATFORM_AVR)
       sendData(chr);
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
       dispBuffer[disp_row][disp_column++] = chr;
 
 #endif
-
     }
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
     endDataTransmission();
 #endif
   }
   else if (font_size == 16)
   {
 
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
     setCursorPos(xpos + (char_cnt) * 8, ypos);
     beginDataTransmission(OLED_ADDRESS);
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
     setCursor(xpos + (char_cnt) * 8, ypos);
 #endif
 
@@ -289,23 +281,22 @@ void printChar(char C, uint8_t xpos, uint8_t ypos, uint8_t font_size, bool Highl
       chr = pgm_read_byte(&font16x8[((int)C - 32) * 16 + i]);
       if (Highlight)
         chr = ~chr;
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
       sendData(chr);
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
       dispBuffer[disp_row][disp_column++] = chr;
 
 #endif
-
     }
 
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
 
     endDataTransmission();
     setCursorPos(xpos + (char_cnt) * 8, ypos + 8);
     beginDataTransmission(OLED_ADDRESS);
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
     setCursor(xpos + (char_cnt) * 8, ypos + 8);
 #endif
 
@@ -314,16 +305,15 @@ void printChar(char C, uint8_t xpos, uint8_t ypos, uint8_t font_size, bool Highl
       chr = pgm_read_byte(&font16x8[((int)C - 32) * 16 + i]);
       if (Highlight)
         chr = ~chr;
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
       sendData(chr);
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
       dispBuffer[disp_row][disp_column++] = chr;
 
 #endif
-
     }
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
     endDataTransmission();
 #endif
 
@@ -333,15 +323,15 @@ void printChar(char C, uint8_t xpos, uint8_t ypos, uint8_t font_size, bool Highl
     return;
 }
 
-void printString(const char* str, uint8_t xpos, uint8_t ypos, uint8_t font_size, bool Highlight)
+void printString(const char *str, uint8_t xpos, uint8_t ypos, uint8_t font_size, bool Highlight)
 {
   uint8_t len = strlen(str);
   char_cnt = 0;
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
   setCursorPos(xpos, ypos);
   memset(pageBuffer, 0, sizeof(pageBuffer));
   column = xpos;
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
   setCursor(xpos, ypos);
 #endif
   for (uint8_t i = 0; i < len; i++)
@@ -354,7 +344,6 @@ void print7Seg_digit(char C, uint8_t xpos, uint8_t ypos)
 {
   char chr;
 
-
   for (uint8_t column = 0; column < 16; column++)
   {
     for (uint8_t page = 0; page < 3; page++)
@@ -363,12 +352,10 @@ void print7Seg_digit(char C, uint8_t xpos, uint8_t ypos)
       chr = pgm_read_byte(&font_7SEG[((int)C - 48) * 48 + (page + column * 3)]);
       dispBuffer[disp_row][disp_column++] = chr;
     }
-
   }
 
   num_cnt++;
 }
-
 
 void print7Seg_number(const char *str, uint8_t xpos, uint8_t ypos)
 {
@@ -387,28 +374,26 @@ void setContrast(uint8_t level)
 
   sendCommand(CONTRAST_CTRL_MODE);
   sendCommand(level);
-
 }
 
 void writeByte(uint8_t byte)
 {
-#if defined (PLATFORM_ESP8266)
+#if defined(PLATFORM_ESP8266)
   dispBuffer[disp_row][disp_column++] = byte;
 
-#elif defined (PLATFORM_AVR)
+#elif defined(PLATFORM_AVR)
   beginDataTransmission(OLED_ADDRESS);
   sendData(byte);
   endDataTransmission();
 
 #endif
-
 }
 
 void setPixel(uint8_t x, uint8_t y, bool set)
 {
   uint8_t curDisp;
   uint8_t shift = y % 8;
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
 
   setCursorPos(x, y);
 
@@ -419,7 +404,8 @@ void setPixel(uint8_t x, uint8_t y, bool set)
   Wire.endTransmission();
 
   Wire.requestFrom(OLED_ADDRESS, 2, 1);
-  while (Wire.available() < 2);
+  while (Wire.available() < 2)
+    ;
   curDisp = Wire.read();
   curDisp = Wire.read();
   if (set)
@@ -428,7 +414,7 @@ void setPixel(uint8_t x, uint8_t y, bool set)
     writeByte(curDisp & (~(0x01 << shift)));
   sendCommand(CMD_STOP_RMW);
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
 
   setCursor(x, y);
   curDisp = dispBuffer[disp_row][disp_column];
@@ -438,14 +424,13 @@ void setPixel(uint8_t x, uint8_t y, bool set)
     dispBuffer[disp_row][disp_column] = (curDisp & (~(0x01 << shift)));
 
 #endif
-
 }
 
 void drawLine(float x1, float y1, float x2, float y2, bool set)
 {
-  //y=mx+c
+  // y=mx+c
 
-  if (x1 == x2) //Vertical line has undefined slope;hence, plot without calculating slope
+  if (x1 == x2) // Vertical line has undefined slope;hence, plot without calculating slope
   {
     for (uint8_t i = min(y1, y2); i <= max(y1, y2); i++)
       setPixel(x1, i, set);
@@ -462,7 +447,7 @@ void drawLine(float x1, float y1, float x2, float y2, bool set)
     setPixel((i - c) / slope, i, set);
 }
 
-void plot(float current_x, float current_y) //Line plot
+void plot(float current_x, float current_y) // Line plot
 {
   static uint8_t prev_x = 0;
   static float prev_y = 0;
@@ -473,7 +458,7 @@ void plot(float current_x, float current_y) //Line plot
 
   if (prev_x >= 127)
   {
-    prev_x = 0; //Start from x=0
+    prev_x = 0; // Start from x=0
   }
 }
 
@@ -491,49 +476,44 @@ void drawCircle(float Cx, float Cy, float radius, bool set)
   {
     setPixel((sqrt(sq(radius) - sq(i - Cy)) + Cx), i, set);
     setPixel(Cx - (sqrt(sq(radius) - sq(i - Cy))), i, set);
-
   }
 }
 
-void displayBmp(const byte binArray[])
+void displayBmp(const uint8_t *binArray)
 {
+
+#if defined(PLATFORM_ESP)
+
+  memcpy((uint8_t *)dispBuffer, binArray, sizeof(dispBuffer));
+
+#elif defined(PLATFORM_AVR)
   uint8_t line = 0, i;
   uint8_t chr;
   for (uint8_t y = 0; y < 64; y += 8)
   {
 
-#if defined (PLATFORM_AVR)
     setCursorPos(0, y);
-
-#elif defined (PLATFORM_ESP8266)
-    setCursor(0, y);
-
-#endif
 
     for (uint8_t parts = 0; parts < 8; parts++)
     {
-#if defined (PLATFORM_AVR)
+
       beginDataTransmission(OLED_ADDRESS);
-#endif
+
       for (uint8_t column = 0; column < 16; column++)
       {
         chr = pgm_read_byte(&binArray[line * 128 + i]);
-#if defined (PLATFORM_AVR)
+
         sendData(chr);
 
-#elif defined (PLATFORM_ESP8266)
-        dispBuffer[disp_row][disp_column++] = chr;
-
-#endif
         i++;
       }
-#if defined (PLATFORM_AVR)
+
       endDataTransmission();
-#endif
     }
     i = 0;
     line++;
   }
+#endif
 }
 
 void resetLog()
@@ -543,7 +523,7 @@ void resetLog()
 }
 
 // Print text with auto scroll
-void printLog(char* log_msg)
+void printLog(char *log_msg)
 {
 
   clearPart(log_row >> 3, 0, 127);
@@ -559,11 +539,8 @@ void printLog(char* log_msg)
   if (log_scroll)
   {
     setLineAddress(log_row);
-
   }
-
 }
-
 
 void drawSine(float frequency, uint8_t shift, bool set)
 {
@@ -571,7 +548,6 @@ void drawSine(float frequency, uint8_t shift, bool set)
   for (float i = 0; i < 128; i += 1)
 
     setPixel(i, 10 * sin(2 * PI * frequency * i) + shift, set);
-
 }
 
 void setBattery(uint8_t percentage)
@@ -591,20 +567,20 @@ void setBattery(uint8_t percentage)
   setCursorPos(110, 0);
   beginDataTransmission(OLED_ADDRESS);
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
   setCursor(110, 0);
 
 #endif
 
   for (uint8_t i = 0; i < 14; i++)
   {
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
     sendData(battery[i]);
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
     dispBuffer[disp_row][disp_column++] = battery[i];
 #endif
   }
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
   endDataTransmission();
 #endif
 }
@@ -639,25 +615,25 @@ void setSignal(uint8_t level)
     signal[8] = 0xFF;
   }
 
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
   setCursorPos(0, 0);
   beginDataTransmission(OLED_ADDRESS);
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
   setCursor(0, 0);
 #endif
 
   for (uint8_t i = 0; i < 9; i++)
   {
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
     sendData(signal[i]);
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
     dispBuffer[disp_row][disp_column++] = signal[i];
 #endif
   }
 
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
   endDataTransmission();
 #endif
 }
@@ -682,14 +658,13 @@ void setBar(uint8_t level, uint8_t page)
   for (uint8_t i = temp + 2; i <= 125; i++)
     bar[i] = 0x81;
 
-#if defined (PLATFORM_AVR)
+#if defined(PLATFORM_AVR)
   update_page(page, bar);
 
-#elif defined (PLATFORM_ESP8266)
+#elif defined(PLATFORM_ESP8266)
   setCursor(0, page * 8);
   for (uint8_t column = 0; column < 128; column++)
     dispBuffer[disp_row][disp_column++] = bar[column];
 
 #endif
-
 }
