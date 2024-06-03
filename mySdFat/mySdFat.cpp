@@ -6,20 +6,6 @@
 #include "mySdFat.h"
 #include "myOled.h"
 
-#define BOOT_SEC_START 0x00002000
-#define FSInfo_SEC 0x00002001
-
-#define ATTR_READ_ONLY 0x01
-#define ATTR_HIDDEN 0x02
-#define ATTR_SYSTEM 0x04
-#define ATTR_VOLUME_ID 0x08
-#define ATTR_DIRECTORY 0x10
-#define ATTR_ARCHIVE 0x20
-#define ATTR_LONG_FILE_NAME 0x0F
-
-#define ATTR_LONG_NAME_MASK (ATTR_READ_ONLY | ATTR_HIDDEN | ATTR_SYSTEM | ATTR_VOLUME_ID | ATTR_DIRECTORY | ATTR_ARCHIVE)
-
-#define FAT_EOC 0x0FFFFFF8
 
 bootSecParams_t params;
 uint8_t SD_buff[512];
@@ -216,46 +202,14 @@ static void getShortFileName(myFile *pFile)
     }
 }
 
-uint32_t startCluster(myFile *pFile)
-{
-    uint32_t startClus = (uint32_t)pFile->DIR_FstClusLO;
-    startClus |= ((uint32_t)(pFile->DIR_FstClusHI)) << 16;
-    return startClus;
-}
-
 static inline bool isFreeEntry(myFile *pFile)
 {
     return ((uint8_t)(pFile->DIR_Name[0]) == 0xE5);
 }
 
-bool isDirectory(myFile *pFile)
-{
-    return !(((pFile->DIR_attr & (ATTR_DIRECTORY | ATTR_VOLUME_ID)) == 0));
-}
-
-bool isEndOfDir(myFile *pFile)
-{
-    return ((uint8_t)(pFile->DIR_Name[0]) == 0);
-}
-
-bool isValidFile(myFile *pFile)
-{
-    return !(isEndOfDir(pFile) || (fileName[0] == '.' && fileName[1] == '_'));
-}
-
 static bool LFN_Entry(myFile *pFile)
 {
     return (((pFile->DIR_attr & ATTR_LONG_NAME_MASK) == ATTR_LONG_FILE_NAME) && (((uint8_t)pFile->DIR_Name[0] & 0xF0) == 0x40));
-}
-
-uint8_t fileLfnEntCnt(myFile *pFile)
-{
-    return pFile->fileEntInf.LFN_EntCnt;
-}
-
-uint32_t fileSize(myFile *pFile)
-{
-    return pFile->DIR_FileSize;
 }
 
 myFile rootDir()
@@ -309,6 +263,7 @@ myFile nextFile(myFile *pFolder)
 
     while (1)
     {
+
         temp = *((myFile *)(SD_buff + (pFolder->entryIndex % 16) * 32));
 
         if (!isFreeEntry(&temp))
@@ -386,6 +341,7 @@ myFile nextFile(myFile *pFolder)
                 temp.fileEntInf.sectorIndex = sectorIndex;
                 temp.fileEntInf.entryIndex = pFolder->entryIndex % 16;
                 temp.fileEntInf.LFN_EntCnt = 0;
+
                 pFolder->entryIndex++;
                 break;
             }
@@ -467,7 +423,7 @@ static myFile fileExists(const char *file, myFile *pFolder)
     return tempFile;
 }
 
-myFile pathExists(const char *path)
+static myFile pathExists(const char *path)
 {
     myFile tempFile = rootDir();
 
@@ -555,20 +511,11 @@ void fileClose(myFile *pFile)
     SD_readMultipleSecStop();
 }
 
-bool isClosed(myFile *pFile)
+static inline bool isClosed(myFile *pFile)
 {
     if ((startCluster(pFile) == 0) && (pFile->DIR_FileSize == 0))
         return true;
     return false;
-}
-
-void fileReset(myFile *pFile)
-{
-    // stop any on going multiple secotrs read
-    SD_readMultipleSecStop();
-
-    // reset index;
-    pFile->entryIndex = 0;
 }
 
 uint8_t readByte(myFile *pFile)
@@ -613,25 +560,6 @@ uint8_t readByte(myFile *pFile)
         SD_readMultipleSec(SD_buff);
 
     return SD_buff[(pFile->entryIndex++) % params.BPB_BytesPerSec];
-}
-
-bool readFile(const char *path, const char *fileName)
-{
-    myFile tempFile = pathExists(path);
-    if (startCluster(&tempFile) == 0)
-    {
-        Serial.println("Invalid path");
-        return false;
-    }
-    tempFile = fileExists(fileName, &tempFile);
-    if (startCluster(&tempFile) == 0)
-        return false;
-
-    uint32_t startClus = startCluster(&tempFile);
-    printContent(startClus, tempFile.DIR_FileSize);
-    Serial.println('\n');
-
-    return true;
 }
 
 bool listDir(const char *path)
@@ -939,27 +867,8 @@ static uint32_t getNxtFreeClus()
         return 0xFFFFFFFF;
 }
 
-static myFile createFile(const char *path, const char *filename, bool isDir)
+static myFile createFile(myFile *pathDir, const char *filename, bool isDir)
 {
-    myFile pathDir;
-
-    myFile tempFile = pathExists(path);
-    if (startCluster(&tempFile) == 0)
-    {
-        Serial.println("Invalid path!");
-        return tempFile;
-    }
-
-    pathDir = tempFile;
-
-    tempFile = fileExists(filename, &pathDir);
-
-    if (startCluster(&tempFile) != 0)
-    {
-        Serial.println("File exists!");
-        tempFile.entryIndex = 0;
-        return tempFile;
-    }
 
     myFile newFile = {0};
 
@@ -1010,7 +919,7 @@ static myFile createFile(const char *path, const char *filename, bool isDir)
         uint8_t nameIndex = 0;
         uint8_t temp = lfnEntCnt;
 
-        frEnt = getFreeEntry(&pathDir, lfnEntCnt + 1);
+        frEnt = getFreeEntry(pathDir, lfnEntCnt + 1);
         SD_readSector(startSecOfClus(frEnt.Cluster) + frEnt.sectorIndex, SD_buff);
 
         while (lfnEntCnt)
@@ -1051,7 +960,7 @@ static myFile createFile(const char *path, const char *filename, bool isDir)
     else
 
     {
-        frEnt = getFreeEntry(&pathDir, 1);
+        frEnt = getFreeEntry(pathDir, 1);
         SD_readSector(startSecOfClus(frEnt.Cluster) + frEnt.sectorIndex, SD_buff);
 
         for (uint8_t i = 0; i < 9; i++)
@@ -1106,14 +1015,38 @@ static myFile createFile(const char *path, const char *filename, bool isDir)
     }
     else
     {
-        tempFile = {0};
-        return tempFile;
+        newFile = {0};
+        return newFile;
     }
 }
 
 myFile fileOpen(const char *path, const char *filename)
 {
-    return createFile(path, filename, false);
+
+    myFile pathDir = pathExists(path);
+
+    if (startCluster(&pathDir) == 0)
+    {
+        Serial.println("Invalid path!");
+        return pathDir;
+    }
+    else if (filename == NULL)
+    {
+        return pathDir;
+    }
+    else
+    {
+
+        myFile tempFile = fileExists(filename, &pathDir);
+
+        if (startCluster(&tempFile) != 0)
+        {
+            Serial.println("File exists!");
+            return tempFile;
+        }
+
+        return createFile(&pathDir, filename, false);
+    }
 }
 
 myFile createDirectory(const char *path, const char *dirName)
@@ -1134,7 +1067,7 @@ myFile createDirectory(const char *path, const char *dirName)
         return thisDir;
     }
 
-    thisDir = createFile(path, dirName, true);
+    thisDir = createFile(&parentDir, dirName, true);
 
     uint32_t dirStartClus = startCluster(&thisDir);
 
@@ -1164,8 +1097,8 @@ myFile createDirectory(const char *path, const char *dirName)
 bool fileWrite(myFile *pFile, const char *data)
 {
     uint32_t startClus = startCluster(pFile);
-    uint16_t byteIndex = pFile->DIR_FileSize % 512;
-    uint32_t sectorIndex = pFile->DIR_FileSize / 512;
+    uint16_t byteIndex = pFile->DIR_FileSize % params.BPB_BytesPerSec;
+    uint32_t sectorIndex = pFile->DIR_FileSize / params.BPB_BytesPerSec;
     uint32_t clusterCnt = (sectorIndex / params.BPB_SecPerClus) + 1;
     uint32_t byteCnt = 0;
     bool moreData = true;

@@ -1,7 +1,7 @@
 #ifndef __MYOLED_H
 #define __MYOLED_H
 
-#define PLATFORM_ESP32
+#define PLATFORM_ESP8266
 
 #define HARDWARE_I2C
 
